@@ -1,0 +1,245 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Simple demo of an infrastructure as a code automation.",
+  "Mappings": {
+    "AWSRegionArch2AMI": {
+      "us-east-1": {
+        "PV64": "ami-22111148"
+      },
+      "us-west-2": {
+        "PV64": "ami-792bc219"
+      },
+      "us-west-1": {
+        "PV64": "ami-0e087a6e"
+      },
+      "eu-west-1": {
+        "PV64": "ami-a5368cd6"
+      },
+      "eu-central-1": {
+        "PV64": "ami-2bde3944"
+      },
+      "ap-northeast-1": {
+        "PV64": "ami-37020959"
+      },
+      "ap-northeast-2": {
+        "PV64": "NOT_SUPPORTED"
+      },
+      "ap-southeast-1": {
+        "PV64": "ami-ff0cc79c"
+      },
+      "ap-southeast-2": {
+        "PV64": "ami-f5210196"
+      },
+      "sa-east-1": {
+        "PV64": "ami-661e930a"
+      },
+      "cn-north-1": {
+        "PV64": "ami-08ef2465"
+      }
+    }
+  },
+  "Resources": {
+    "WebServerInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Metadata": {
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "InstallAndRun": [
+              "Install"
+            ]
+          },
+          "Install": {
+            "packages": {
+              "yum": {
+                "httpd": []
+              }
+            },
+            "files": {
+              "/var/www/html/index.html": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "<html>\n",
+                      "  <head>\n",
+                      "    <title>Automation for the People</title>\n",
+                      "  </head>\n",
+                      "  <body>\n",
+                      "    <h1>Automation for the People</h1>\n",
+                      "  </body>\n",
+                      "</html>\n"
+                    ]
+                  ]
+                },
+                "mode": "000600",
+                "owner": "apache",
+                "group": "apache"
+              },
+              "/etc/cfn/cfn-hup.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[main]\n",
+                      "stack=",
+                      {
+                        "Ref": "AWS::StackId"
+                      },
+                      "\n",
+                      "region=",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode": "000400",
+                "owner": "root",
+                "group": "root"
+              },
+              "/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+                "content": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "[cfn-auto-reloader-hook]\n",
+                      "triggers=post.update\n",
+                      "path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init\n",
+                      "action=/opt/aws/bin/cfn-init -v ",
+                      "         --stack ",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "         --resource WebServerInstance ",
+                      "         --configsets InstallAndRun ",
+                      "         --region ",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "\n",
+                      "runas=root\n"
+                    ]
+                  ]
+                }
+              }
+            },
+            "services": {
+              "sysvinit": {
+                "httpd": {
+                  "enabled": "true",
+                  "ensureRunning": "true"
+                },
+                "cfn-hup": {
+                  "enabled": "true",
+                  "ensureRunning": "true",
+                  "files": [
+                    "/etc/cfn/cfn-hup.conf",
+                    "/etc/cfn/hooks.d/cfn-auto-reloader.conf"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "Properties": {
+        "ImageId": {
+          "Fn::FindInMap": [
+            "AWSRegionArch2AMI",
+            {
+              "Ref": "AWS::Region"
+            },
+            "PV64"
+          ]
+        },
+        "InstanceType": "t1.micro",
+        "SecurityGroups": [
+          {
+            "Ref": "WebServerSecurityGroup"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "",
+              [
+                "#!/bin/bash -xe\n",
+                "yum update -y aws-cfn-bootstrap\n",
+                "# Install the files and packages from the metadata\n",
+                "/opt/aws/bin/cfn-init -v ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource WebServerInstance ",
+                "         --configsets InstallAndRun ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n",
+                "# Signal the status from cfn-init\n",
+                "/opt/aws/bin/cfn-signal -e $? ",
+                "         --stack ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                "         --resource WebServerInstance ",
+                "         --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                "\n"
+              ]
+            ]
+          }
+        }
+      },
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT5M"
+        }
+      }
+    },
+    "WebServerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable HTTP access via port 80",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "WebsiteURL": {
+      "Description": "URL for newly created Stelligent Mini Project Website",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "WebServerInstance",
+                "PublicDnsName"
+              ]
+            }
+          ]
+        ]
+      }
+    }
+  }
+}
