@@ -47,7 +47,7 @@ https://console.aws.amazon.com/cloudformation/home?region= **region**#/stacks/ne
 
 The template is stored in an S3 bucket which is accessible. 
 
-1. Please copy the url below and launch in your brower: 
+1. Please copy the url below and launch in your browser: 
  
 https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=AutomationForThePeopleStack&templateURL=https://s3.amazonaws.com/stelligentproject/automation-for-the-people.template
 
@@ -56,13 +56,13 @@ https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?
 1. Go to the CloudFormation page and wait till the your new stack with the name AutomationForThePeopleStatck staus changes to CREATE_COMPLETE.
 
 
-## Verifying if this excercise was a success
+## Verifying if this exercise was a success
 
 1. Go to the output tab
 
 2. Under Value tab, click on the URL which should read something like: http://ec2<IP-ADRESS OF WEBSERVER>.compute-1.amazonaws.com
 
-3. This should open a webpage displaying: Automation for the people.
+3. This should open a web-page displaying: Automation for the people.
 
 ________________________________________________________________________________________________________________________________________________________________________________
 
